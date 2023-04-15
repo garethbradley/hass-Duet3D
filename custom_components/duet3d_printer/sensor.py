@@ -74,23 +74,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                             tool,
                         )
                         devices.append(new_sensor)
-        elif endpoint == "array":
-            # "Position": [
-            #     "array",
-            #     "coords.xyz",
-            #     "x,y,z",
-            #     "mm,mm,mm",
-            #     "mdi:format-vertical-align-top,mdi:format-vertical-align-top,mdi:format-vertical-align-top",
-            # ],
-            # api,
-            # condition,
-            # sensor_type,
-            # sensor_name,
-            # unit,
-            # endpoint,
-            # group,
-            # tool=None,
-            # icon=None,
+        elif endpoint == "move":
             group = SENSOR_TYPES[duet3d_type][1]
             keys = SENSOR_TYPES[duet3d_type][2].split(",")
             units = SENSOR_TYPES[duet3d_type][3].split(",")
@@ -172,7 +156,7 @@ class Duet3DSensor(Entity):
         self.sensor_name = sensor_name
         if tool is None:
             self._name = f"{sensor_name} {condition}"
-        elif endpoint is "array":
+        elif endpoint is "move":
             self._name = f"{sensor_name} {condition}"
         else:
             self._name = f"{sensor_name} {condition} tool{tool} temp"
@@ -194,25 +178,9 @@ class Duet3DSensor(Entity):
 
     @property
     def state(self):
-        """Return the state of the sensor."""
-        print_status_dict = {
-            "S": "Stopped",
-            "M": "Simulating",
-            "P": "Printing",
-            "I": "Idle",
-            "C": "Configuring",
-            "B": "Busy",
-            "D": "Decelerating",
-            "R": "Resuming",
-            "H": "Halted",
-            "F": "Flashing Firmware",
-            "T": "Changin Tool",
-        }
+
 
         sensor_unit = self.unit_of_measurement
-
-        if self._state in print_status_dict:
-            self._state = print_status_dict[self._state]
 
         if sensor_unit in (TEMP_CELSIUS, "%"):
             # API sometimes returns null and not 0
