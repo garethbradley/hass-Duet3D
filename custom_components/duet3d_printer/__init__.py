@@ -211,13 +211,13 @@ class Duet3dAPI:
             if now - last_time < MIN_INTERVAL:
                 return self.job_last_reading[0]
         if endpoint == "heat":
-            last_time = self.job_last_reading[1]
+            last_time = self.heat_last_reading[1]
             if now - last_time < MIN_INTERVAL:
-                return self.job_last_reading[0]
+                return self.heat_last_reading[0]
         if endpoint == "move":
-            last_time = self.job_last_reading[1]
+            last_time = self.move_last_reading[1]
             if now - last_time < MIN_INTERVAL:
-                return self.job_last_reading[0]
+                return self.move_last_reading[0]
 
         url = self.api_url + "&key=" + endpoint
         url = url.replace("/&", "&")
