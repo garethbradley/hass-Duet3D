@@ -29,8 +29,8 @@ Add the following config to the `/config/configuration.yaml` file:
 ```yaml
 # Duet Integration
 duet3d_printer:
-  host: !secret duet3d-host
-  name: !secret duet3d-name
+  host: <hostname or IP address of your printer, e.g. 192.168.1.100>
+  name: <name the printer should have in Home Assistant, e.g. My Printer>
   number_of_tools: 1
   bed: true
   sensors:
@@ -40,6 +40,7 @@ duet3d_printer:
       - 'Job Percentage'
       - 'Time Elapsed'
       - 'Time Remaining'
+      - 'Job Name'
       - 'Position'
 ```
 
@@ -49,15 +50,15 @@ Add the following to your Lovelace dashboard. Remember to update the entity name
     cards:
       - type: glance
         entities:
-          - entity: sensor.blv_mgn_cube_current_toolbed_temp
+          - entity: sensor.<your-printer-name>_current_toolbed_temp
             name: Bed
-          - entity: sensor.blv_mgn_cube_current_tool1_temp
+          - entity: sensor.<your-printer-name>_current_tool1_temp
             name: Tool
-          - entity: sensor.blv_mgn_cube_current_state
+          - entity: sensor.<your-printer-name>_current_state
             name: Status
     type: horizontal-stack
   conditions:
-    - entity: switch.blv_mgn_cube
+    - entity: switch.<your-printer-name>
       state: 'on'
   type: conditional
 ```
