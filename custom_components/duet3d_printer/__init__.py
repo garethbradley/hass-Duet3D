@@ -67,7 +67,7 @@ SENSOR_TYPES = {
     # API Endpoint, Group, Key, unit, icon
     # Group, subgroup, key, unit, icon
     "Temperatures": ["heat", "heaters", "0,1", TEMP_CELSIUS],
-    "Current State": ["job", "status", "text", None, "mdi:printer-3d"],
+    "Current State": ["state", "status", "text", None, "mdi:printer-3d"],
     "Job Percentage": ["job", "fractionPrinted", "completion", "%", "mdi:file-percent"],
     "Time Remaining": ["job", "timesLeft", "file", "seconds", "mdi:clock-end"],
     "Time Elapsed": ["job", "printDuration", "printTime", "seconds", "mdi:clock-start"],
@@ -139,6 +139,7 @@ def setup(hass, config):
             octoprint_api.get("heat")
             octoprint_api.get("job")
             octoprint_api.get("move")
+            octoprint_api.get("state")
         except requests.exceptions.RequestException as conn_err:
             _LOGGER.error("Error setting up Duet3d API: %r", conn_err)
             continue
@@ -177,13 +178,16 @@ class Duet3dAPI:
         self.fans_last_reading = [{}, 0.0]
         self.move_last_reading = [{}, 0.0]
         self.heat_last_reading = [{}, 0.0]
+        self.state_last_reading = [{}, 0.0]
         self.job_available = False
         self.heat_available = False
         self.move_available = False
+        self.state_available = False
         self.available = False
         self.job_error_logged = False
         self.heat_error_logged = False
         self.move_error_logged = False
+        self.state_error_logged = False
         self.bed = bed
         self.number_of_tools = number_of_tools
 
@@ -218,6 +222,10 @@ class Duet3dAPI:
             last_time = self.move_last_reading[1]
             if now - last_time < MIN_INTERVAL:
                 return self.move_last_reading[0]
+        if endpoint == "state":
+            last_time = self.state_last_reading[1]
+            if now - last_time < MIN_INTERVAL:
+                return self.state_last_reading[0]
 
         url = self.api_url + "&key=" + endpoint
         url = url.replace("/&", "&")
@@ -236,35 +244,43 @@ class Duet3dAPI:
                 self.heat_last_reading[0] = response.json()
                 self.heat_last_reading[1] = time.time()
                 self.heat_available = True
-            self.available = self.heat_available and self.job_available and self.move_available
+            elif endpoint == "state":
+                self.state_last_reading[0] = response.json()
+                self.state_last_reading[1] = time.time()
+                self.state_available = True
+            self.available = self.state_available and self.job_available and self.move_available and self.heat_available
             if self.available:
                 self.job_error_logged = False
                 self.heat_error_logged = False
                 self.move_error_logged = False
+                self.state_error_logged = False
             return response.json()
         except Exception as conn_exc:  # pylint: disable=broad-except
             log_string = "Failed to update Duet3D status. " + "  Error: %s" % (
                 conn_exc
             )
             # Only log the first failure
+            log_string = "Endpoint: " + endpoint + " " + log_string
             if endpoint == "job":
-                log_string = "Endpoint: job " + log_string
                 if not self.job_error_logged:
                     _LOGGER.error(log_string)
                     self.job_error_logged = True
                     self.job_available = False
             if endpoint == "heat":
-                log_string = "Endpoint: heat " + log_string
                 if not self.heat_error_logged:
                     _LOGGER.error(log_string)
                     self.heat_error_logged = True
                     self.heat_available = False
             if endpoint == "move":
-                log_string = "Endpoint: move " + log_string
                 if not self.move_error_logged:
                     _LOGGER.error(log_string)
                     self.move_error_logged = True
                     self.move_available = False
+            if endpoint == "state":
+                if not self.state_error_logged:
+                    _LOGGER.error(log_string)
+                    self.state_error_logged = True
+                    self.state_available = False
 
             self.available = False
             return None
@@ -309,5 +325,7 @@ def get_value_from_json(json_dict, end_point, sensor_type, group, tool):
             return json_dict["result"]["duration"]
         else:
             return None  # HACK
+    elif end_point == "state":
+        return json_dict["result"]["status"]
     else:
         return None
