@@ -28,7 +28,7 @@ CONF_NUMBER_OF_TOOLS = "number_of_tools"
 DEFAULT_NAME = "Duet3D Printer"
 DOMAIN = "duet3d_printer"
 
-MIN_INTERVAL = 30.0
+MIN_INTERVAL = 10.0
 
 
 def has_all_unique_names(value):
@@ -136,8 +136,9 @@ def setup(hass, config):
         try:
             octoprint_api = Duet3dAPI(base_url, bed, number_of_tools)
             printers[base_url] = octoprint_api
-            octoprint_api.get("printer")
+            octoprint_api.get("heat")
             octoprint_api.get("job")
+            octoprint_api.get("move")
         except requests.exceptions.RequestException as conn_err:
             _LOGGER.error("Error setting up Duet3d API: %r", conn_err)
             continue
@@ -172,15 +173,17 @@ class Duet3dAPI:
         self.headers = {
             'Content-Type': 'application/json',
         }
-        self.job_last_reading = [{}, None]
-        self.fans_last_reading = [{}, None]
-        self.move_last_reading = [{}, None]
-        self.heat_last_reading = [{}, None]
+        self.job_last_reading = [{}, 0.0]
+        self.fans_last_reading = [{}, 0.0]
+        self.move_last_reading = [{}, 0.0]
+        self.heat_last_reading = [{}, 0.0]
         self.job_available = False
-        self.printer_available = False
+        self.heat_available = False
+        self.move_available = False
         self.available = False
-        self.printer_error_logged = False
         self.job_error_logged = False
+        self.heat_error_logged = False
+        self.move_error_logged = False
         self.bed = bed
         self.number_of_tools = number_of_tools
 
@@ -205,14 +208,21 @@ class Duet3dAPI:
         now = time.time()
         if endpoint == "job":
             last_time = self.job_last_reading[1]
-            if last_time is not None:
-                if now - last_time < MIN_INTERVAL:
-                    return self.job_last_reading[0]
+            if now - last_time < MIN_INTERVAL:
+                return self.job_last_reading[0]
+        if endpoint == "heat":
+            last_time = self.job_last_reading[1]
+            if now - last_time < MIN_INTERVAL:
+                return self.job_last_reading[0]
+        if endpoint == "move":
+            last_time = self.job_last_reading[1]
+            if now - last_time < MIN_INTERVAL:
+                return self.job_last_reading[0]
 
         url = self.api_url + "&key=" + endpoint
         url = url.replace("/&", "&")
         try:
-            response = requests.get(url, headers=self.headers, timeout=9)
+            response = requests.get(url, headers=self.headers, timeout=2)
             response.raise_for_status()
             if endpoint == "job":
                 self.job_last_reading[0] = response.json()
@@ -221,10 +231,16 @@ class Duet3dAPI:
             elif endpoint == "move":
                 self.move_last_reading[0] = response.json()
                 self.move_last_reading[1] = time.time()
-            self.available = self.printer_available and self.job_available
+                self.move_available = True
+            elif endpoint == "heat":
+                self.heat_last_reading[0] = response.json()
+                self.heat_last_reading[1] = time.time()
+                self.heat_available = True
+            self.available = self.heat_available and self.job_available and self.move_available
             if self.available:
                 self.job_error_logged = False
-                self.printer_error_logged = False
+                self.heat_error_logged = False
+                self.move_error_logged = False
             return response.json()
         except Exception as conn_exc:  # pylint: disable=broad-except
             log_string = "Failed to update Duet3D status. " + "  Error: %s" % (
@@ -237,12 +253,19 @@ class Duet3dAPI:
                     _LOGGER.error(log_string)
                     self.job_error_logged = True
                     self.job_available = False
-            elif endpoint == "printer":
-                log_string = "Endpoint: printer " + log_string
-                if not self.printer_error_logged:
+            if endpoint == "heat":
+                log_string = "Endpoint: heat " + log_string
+                if not self.heat_error_logged:
                     _LOGGER.error(log_string)
-                    self.printer_error_logged = True
-                    self.printer_available = False
+                    self.heat_error_logged = True
+                    self.heat_available = False
+            if endpoint == "move":
+                log_string = "Endpoint: move " + log_string
+                if not self.move_error_logged:
+                    _LOGGER.error(log_string)
+                    self.move_error_logged = True
+                    self.move_available = False
+
             self.available = False
             return None
 
@@ -275,7 +298,11 @@ def get_value_from_json(json_dict, end_point, sensor_type, group, tool):
         if group == "fileName":
             return json_dict["result"]["file"][group] or json_dict["result"]["lastFileName"]
         elif group == "fractionPrinted":
-            return 100.0 * json_dict["result"]["filePosition"] / json_dict["result"]["file"]["size"]
+            filesize = json_dict["result"]["file"]["size"]
+            if filesize > 0:
+                return 100.0 * json_dict["result"]["filePosition"] / filesize
+            else:
+                return 0
         elif group == "timesLeft":
             return json_dict["result"]["timesLeft"]["slicer"]
         elif group == "printDuration":
