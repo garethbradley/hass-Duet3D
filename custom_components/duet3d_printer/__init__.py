@@ -28,7 +28,7 @@ CONF_NUMBER_OF_TOOLS = "number_of_tools"
 DEFAULT_NAME = "Duet3D Printer"
 DOMAIN = "duet3d_printer"
 
-MIN_INTERVAL = 10.0
+MIN_INTERVAL = 15.0
 
 
 def has_all_unique_names(value):
@@ -71,6 +71,8 @@ SENSOR_TYPES = {
     "Job Percentage": ["job", "fractionPrinted", "completion", "%", "mdi:file-percent"],
     "Time Remaining": ["job", "timesLeft", "file", "seconds", "mdi:clock-end"],
     "Time Elapsed": ["job", "printDuration", "printTime", "seconds", "mdi:clock-start"],
+    "Filament Amount": ["job", "filamentAmount", "", "mm", "mdi:printer-3d-nozzle"],
+    "Filament Used": ["job", "rawExtrusion", "", "mm", "mdi:printer-3d-nozzle-outline"],
     "Job Name": ["job", "fileName", "text", None, "mdi:printer-3d"],
     "Position": ["move", "axes", "0,1,2", "mm,mm,mm", "mdi:axis-x-arrow,mdi:axis-y-arrow,mdi:axis-z-arrow",
                  ],
@@ -230,7 +232,7 @@ class Duet3dAPI:
         url = self.api_url + "&key=" + endpoint
         url = url.replace("/&", "&")
         try:
-            response = requests.get(url, headers=self.headers, timeout=2)
+            response = requests.get(url, headers=self.headers, timeout=5)
             response.raise_for_status()
             if endpoint == "job":
                 self.job_last_reading[0] = response.json()
@@ -323,6 +325,10 @@ def get_value_from_json(json_dict, end_point, sensor_type, group, tool):
             return json_dict["result"]["timesLeft"]["slicer"]
         elif group == "printDuration":
             return json_dict["result"]["duration"]
+        elif group == "filamentAmount":
+            return json_dict["result"]["file"]["filament"][0]
+        elif group == "rawExtrusion":
+            return json_dict["result"]["rawExtrusion"]
         else:
             return None  # HACK
     elif end_point == "state":
