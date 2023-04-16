@@ -42,6 +42,8 @@ duet3d_printer:
       - 'Time Remaining'
       - 'Job Name'
       - 'Position'
+      - "Filament Amount"
+      - "Filament Used"
 ```
 
 Add the following to your Lovelace dashboard. Remember to update the entity names with those of your own printer (defined by the value of `duet3d-name`)
