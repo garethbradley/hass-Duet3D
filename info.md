@@ -8,18 +8,7 @@ This is a work in progress, the code is working but there is still lots to do
 
 ## Installation
 
-### From HACS
-
-1. Install HACS if you haven't already (see [installation guide](https://hacs.netlify.com/docs/installation/manual)).
-2. Add custom repository `https://github.com/DJGummikuh/hass-Duet3D` as "Integration" in the settings tab of HACS.
-3. Find and install "Duet3D" integration in HACS's "Integrations" tab.
-4. Restart your Home Assistant.
-
-### Manual
-
-1. Download and unzip the [repo archive](https://github.com/DJGummikuh/hass-Duet3D/archive/master.zip). (You could also click "Download ZIP" after pressing the green button in the repo, alternatively, you could clone the repo from SSH add-on).
-2. Copy contents of the archive/repo into your `/config` directory.
-3. Restart your Home Assistant.
+Well obviously you're reading this in HACS so chances are you already installed this ;-)
 
 ### Config
 The following configuration is taken from the excellent article: [Getting started with Duet Wifi, RepRapFirmware, and Home Assistant](https://begala.io/home-assistant/duet-wifi-feat-home-assistant/).
